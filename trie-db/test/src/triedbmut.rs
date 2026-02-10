@@ -56,7 +56,7 @@ fn unpopulate_trie<'db, T: TrieLayout>(
 	for (_ix, i) in v.into_iter().enumerate() {
 		let key: &[u8] = &i.0;
 		if t.remove(key).is_err() {
-			return false
+			return false;
 		}
 	}
 	true

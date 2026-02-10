@@ -22,6 +22,12 @@ hex-literal = "0.4"
 criterion = "0.5.1"
 env_logger = { version = "0.10", default-features = false }
 log = "0.4"
-
+twox-hash = {version="1.6.3",  features = ["digest_0_10"]}
+blake2b_simd = "1.0.4"
+hash256-std-hasher = { path = "../../hash256-std-hasher", version = "0.15.2" }
+byteorder = { version = "1.3.2", default-features = false }
+digest = { version = "0.10.3", default-features = false }
+env = "1.0.1"
 [dev-dependencies]
 array-bytes = "6.0.0"
+keccak-hasher = { path = "../../test-support/keccak-hasher" }

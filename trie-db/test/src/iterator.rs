@@ -68,8 +68,9 @@ fn iterator_works_internal<T: TrieLayout>() {
 			Some(Ok((prefix, Some(_), node))) => {
 				assert_eq!(prefix, nibble_vec(hex!(""), 0));
 				match node.node() {
-					Node::Extension(partial, _) =>
-						assert_eq!(partial, NibbleSlice::new_offset(&hex!("00")[..], 1)),
+					Node::Extension(partial, _) => {
+						assert_eq!(partial, NibbleSlice::new_offset(&hex!("00")[..], 1))
+					},
 					_ => panic!("unexpected node"),
 				}
 			},
@@ -102,8 +103,9 @@ fn iterator_works_internal<T: TrieLayout>() {
 			Some(Ok((prefix, None, node))) => {
 				assert_eq!(prefix, nibble_vec(hex!("0120"), 3));
 				match node.node() {
-					Node::Leaf(partial, _) =>
-						assert_eq!(partial, NibbleSlice::new_offset(&hex!("03")[..], 1)),
+					Node::Leaf(partial, _) => {
+						assert_eq!(partial, NibbleSlice::new_offset(&hex!("03")[..], 1))
+					},
 					_ => panic!("unexpected node"),
 				}
 			},
@@ -129,8 +131,9 @@ fn iterator_works_internal<T: TrieLayout>() {
 			Some(Ok((prefix, Some(_), node))) => {
 				assert_eq!(prefix, nibble_vec(hex!(""), 0));
 				match node.node() {
-					Node::NibbledBranch(partial, _, _) =>
-						assert_eq!(partial, NibbleSlice::new_offset(&hex!("00")[..], 1)),
+					Node::NibbledBranch(partial, _, _) => {
+						assert_eq!(partial, NibbleSlice::new_offset(&hex!("00")[..], 1))
+					},
 					_ => panic!("unexpected node"),
 				}
 			},
@@ -144,8 +147,9 @@ fn iterator_works_internal<T: TrieLayout>() {
 				}
 				assert_eq!(prefix, nibble_vec(hex!("01"), 2));
 				match node.node() {
-					Node::NibbledBranch(partial, _, _) =>
-						assert_eq!(partial, NibbleSlice::new(&hex!("")[..])),
+					Node::NibbledBranch(partial, _, _) => {
+						assert_eq!(partial, NibbleSlice::new(&hex!("")[..]))
+					},
 					_ => panic!("unexpected node"),
 				}
 			},
@@ -159,8 +163,9 @@ fn iterator_works_internal<T: TrieLayout>() {
 				}
 				assert_eq!(prefix, nibble_vec(hex!("0120"), 3));
 				match node.node() {
-					Node::Leaf(partial, _) =>
-						assert_eq!(partial, NibbleSlice::new_offset(&hex!("03")[..], 1)),
+					Node::Leaf(partial, _) => {
+						assert_eq!(partial, NibbleSlice::new_offset(&hex!("03")[..], 1))
+					},
 					_ => panic!("unexpected node"),
 				}
 			},
@@ -301,10 +306,11 @@ fn iterate_over_incomplete_db_internal<T: TrieLayout>() {
 		let mut iter = TrieDBNodeIterator::new(&trie).unwrap();
 
 		match TrieIterator::seek(&mut iter, &hex!("02")[..]) {
-			Err(e) =>
+			Err(e) => {
 				if let TrieError::IncompleteDatabase(err_hash) = *e {
 					assert_eq!(err_hash.as_ref(), leaf_hash.as_ref());
-				},
+				}
+			},
 			_ => panic!("expected IncompleteDatabase error"),
 		}
 	}
@@ -316,18 +322,20 @@ fn iterate_over_incomplete_db_internal<T: TrieLayout>() {
 
 		TrieIterator::seek(&mut iter, &hex!("0130")[..]).unwrap();
 		match iter.next() {
-			Some(Err(e)) =>
+			Some(Err(e)) => {
 				if let TrieError::IncompleteDatabase(err_hash) = *e {
 					assert_eq!(err_hash.as_ref(), leaf_hash.as_ref());
-				},
+				}
+			},
 			_ => panic!("expected IncompleteDatabase error"),
 		}
 		match iter.next() {
 			Some(Ok((_, _, node))) => match node.node() {
-				Node::Leaf(_, v) =>
+				Node::Leaf(_, v) => {
 					if !matches!(v, Value::Node(..)) {
 						assert_eq!(v, Value::Inline(&vec![2; 32][..]));
-					},
+					}
+				},
 				_ => panic!("unexpected node"),
 			},
 			_ => panic!("unexpected item"),
@@ -371,8 +379,9 @@ fn prefix_works_internal<T: TrieLayout>() {
 				}
 				assert_eq!(prefix, nibble_vec(hex!("01"), 2));
 				match node.node() {
-					Node::NibbledBranch(partial, _, _) =>
-						assert_eq!(partial, NibbleSlice::new_offset(&hex!("")[..], 0)),
+					Node::NibbledBranch(partial, _, _) => {
+						assert_eq!(partial, NibbleSlice::new_offset(&hex!("")[..], 0))
+					},
 					_ => panic!("unexpected node"),
 				}
 			},
