@@ -26,7 +26,7 @@ criterion_group!(benches, trie_write_benchmark, trie_read_benchmark,);
 criterion_main!(benches);
 
 // 固定参数：20000个键值对
-const TOTAL_KEYS: usize = 200000;
+const TOTAL_KEYS: usize = 20000000;
 const PAL_PREFIX_SIZE: usize = 16;
 const STORAGE_PREFIX_SIZE: usize = 16;
 const ORIGINAL_KEY_SIZE: usize = 32;
