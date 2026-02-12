@@ -26,7 +26,7 @@ criterion_group!(benches, trie_write_benchmark, trie_read_benchmark,);
 criterion_main!(benches);
 
 // 固定参数：20000个键值对
-const TOTAL_KEYS: usize = 5000000;
+const TOTAL_KEYS: usize = 500000;
 const PAL_PREFIX_SIZE: usize = 16;
 const STORAGE_PREFIX_SIZE: usize = 16;
 const ORIGINAL_KEY_SIZE: usize = 32;
@@ -143,7 +143,6 @@ fn generate_20000_testdata() -> Vec<TestData> {
 
 		// 生成原始key（32字节）
 		let mut original_key = vec![0u8; ORIGINAL_KEY_SIZE];
-		rng.fill_bytes(&mut original_key);
 		// 在original_key中存储索引，确保唯一性
 		original_key[0..8].copy_from_slice(&i.to_be_bytes());
 
