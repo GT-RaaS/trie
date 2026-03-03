@@ -18,12 +18,12 @@ use digest::Digest;
 use memory_db::{HashKey, MemoryDB};
 use rand::rngs::SmallRng;
 use rand::{RngCore, SeedableRng};
-use reference_trie::{ReferenceNodeCodec, TestTrieCache};
+use reference_trie::ReferenceNodeCodec;
 use std::hash::Hasher;
 use trie_db::{Trie, TrieConfiguration, TrieDBMutBuilder, TrieLayout, TrieMut};
 
 // RocksDB 依赖
-use rocksdb::{DB, Options};
+use rocksdb::{DB, Options,BlockBasedOptions,BlockBasedIndexType};
 use tempfile::TempDir;
 
 // 用于共享测试数据的全局变量
@@ -39,7 +39,7 @@ criterion_group!(
 criterion_main!(benches);
 
 // 固定参数：20000个键值对
-const TOTAL_KEYS: usize = 2000000;
+const TOTAL_KEYS: usize = 200000;
 const KEY_SIZE: usize = 32;
 const VALUE_SIZE: usize = 64;
 const SEED: u64 = 42;
@@ -105,9 +105,8 @@ fn trie_write_benchmark(c: &mut Criterion) {
         b.iter(|| {
             let mut root = Default::default();
             {
-                let mut cache = TestTrieCache::<Layout>::default();
                 let mut mdb = MemoryDB::<Blake2bHasher, HashKey<_>, _>::default();
-                let mut trie = TrieDBMutBuilder::<Layout>::new(&mut mdb, &mut root).with_cache(&mut cache).build();
+                let mut trie = TrieDBMutBuilder::<Layout>::new(&mut mdb, &mut root).build();
 
                 for (key, value) in test_data.iter() {
                     trie.insert(key, value).expect("插入失败");
@@ -125,16 +124,14 @@ fn trie_read_benchmark(c: &mut Criterion) {
     let mut root = Default::default();
     let mut mdb = MemoryDB::<Blake2bHasher, HashKey<_>, _>::default();
     {
-        let mut cache = TestTrieCache::<Layout>::default();
-        let mut trie = TrieDBMutBuilder::<Layout>::new(&mut mdb, &mut root).with_cache(&mut cache).build();
+        let mut trie = TrieDBMutBuilder::<Layout>::new(&mut mdb, &mut root).build();
         for (key, value) in test_data.iter() {
             trie.insert(key, value).expect("插入失败");
         }
     }
 
     // 构建只读 trie
-    let mut cache = TestTrieCache::<Layout>::default();
-    let trie_db = trie_db::TrieDBBuilder::<Layout>::new(&mdb, &root).with_cache(&mut cache).build();
+    let trie_db = trie_db::TrieDBBuilder::<Layout>::new(&mdb, &root).build();
 
     println!("Trie 构建完成，准备进行读测试...");
 
@@ -211,7 +208,12 @@ fn rocksdb_write_benchmark(c: &mut Criterion) {
             },
             |tmp_dir| {
                 let mut opts = Options::default();
+                let mut block_opts = BlockBasedOptions::default();
+                block_opts.disable_cache();  // 关闭 block cache
+                block_opts.set_index_type(BlockBasedIndexType::HashSearch);
+                opts.set_block_based_table_factory(&block_opts);
                 opts.create_if_missing(true);
+             
                 let db = DB::open(&opts, tmp_dir.path()).expect("打开 RocksDB 失败");
 
                 for (key, value) in test_data.iter() {
@@ -232,6 +234,10 @@ fn rocksdb_read_benchmark(c: &mut Criterion) {
     let tmp_dir = TempDir::new_in(MEM_FS_PATH).expect(&format!("在 {} 创建临时目录失败", MEM_FS_PATH));
     {
         let mut opts = Options::default();
+        let mut block_opts = BlockBasedOptions::default();
+        block_opts.disable_cache();  // 关闭 block cache
+        block_opts.set_index_type(BlockBasedIndexType::HashSearch);
+        opts.set_block_based_table_factory(&block_opts);
         opts.create_if_missing(true);
         let db = DB::open(&opts, tmp_dir.path()).expect("打开 RocksDB 失败");
         for (key, value) in test_data.iter() {
