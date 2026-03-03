@@ -41,7 +41,7 @@ criterion_group!(
 criterion_main!(benches);
 
 // 固定参数：20000个键值对
-const TOTAL_KEYS: usize = 200000;
+const TOTAL_KEYS: usize = 2000000;
 const KEY_SIZE: usize = 32;
 const VALUE_SIZE: usize = 64;
 const SEED: u64 = 42;
@@ -214,8 +214,7 @@ fn rocksdb_write_benchmark(c: &mut Criterion) {
 				block_opts.disable_cache(); // 关闭 block cache
 				block_opts.set_data_block_index_type(DataBlockIndexType::BinaryAndHash);
 				block_opts.set_index_type(BlockBasedIndexType::HashSearch);
-                block_opts.set_bloom_filter(15.5, false);
-        
+
 				opts.set_prefix_extractor(SliceTransform::create_fixed_prefix(32));
 				opts.set_block_based_table_factory(&block_opts);
                 
@@ -247,7 +246,6 @@ fn rocksdb_read_benchmark(c: &mut Criterion) {
 		block_opts.set_data_block_index_type(DataBlockIndexType::BinaryAndHash);
 		block_opts.set_index_type(BlockBasedIndexType::HashSearch);
 		opts.set_prefix_extractor(SliceTransform::create_fixed_prefix(32));
-        block_opts.set_bloom_filter(15.5, false);
 		opts.set_block_based_table_factory(&block_opts);
 		opts.create_if_missing(true);
 		let db = DB::open(&opts, tmp_dir.path()).expect("打开 RocksDB 失败");
