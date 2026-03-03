@@ -18,7 +18,7 @@ use digest::Digest;
 use memory_db::{HashKey, MemoryDB};
 use rand::rngs::SmallRng;
 use rand::{RngCore, SeedableRng};
-use reference_trie::ReferenceNodeCodec;
+use reference_trie::{ReferenceNodeCodec, TestTrieCache};
 use std::hash::Hasher;
 use trie_db::{Trie, TrieConfiguration, TrieDBMutBuilder, TrieLayout, TrieMut};
 
@@ -105,8 +105,9 @@ fn trie_write_benchmark(c: &mut Criterion) {
         b.iter(|| {
             let mut root = Default::default();
             {
+                let mut cache = TestTrieCache::<Layout>::default();
                 let mut mdb = MemoryDB::<Blake2bHasher, HashKey<_>, _>::default();
-                let mut trie = TrieDBMutBuilder::<Layout>::new(&mut mdb, &mut root).build();
+                let mut trie = TrieDBMutBuilder::<Layout>::new(&mut mdb, &mut root).with_cache(&mut cache).build();
 
                 for (key, value) in test_data.iter() {
                     trie.insert(key, value).expect("插入失败");
@@ -124,14 +125,16 @@ fn trie_read_benchmark(c: &mut Criterion) {
     let mut root = Default::default();
     let mut mdb = MemoryDB::<Blake2bHasher, HashKey<_>, _>::default();
     {
-        let mut trie = TrieDBMutBuilder::<Layout>::new(&mut mdb, &mut root).build();
+        let mut cache = TestTrieCache::<Layout>::default();
+        let mut trie = TrieDBMutBuilder::<Layout>::new(&mut mdb, &mut root).with_cache(&mut cache).build();
         for (key, value) in test_data.iter() {
             trie.insert(key, value).expect("插入失败");
         }
     }
 
     // 构建只读 trie
-    let trie_db = trie_db::TrieDBBuilder::<Layout>::new(&mdb, &root).build();
+    let mut cache = TestTrieCache::<Layout>::default();
+    let trie_db = trie_db::TrieDBBuilder::<Layout>::new(&mdb, &root).with_cache(&mut cache).build();
 
     println!("Trie 构建完成，准备进行读测试...");
 
