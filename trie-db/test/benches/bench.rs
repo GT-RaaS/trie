@@ -136,7 +136,7 @@ fn trie_read_benchmark(c: &mut Criterion) {
     println!("Trie 构建完成，准备进行读测试...");
 
     // ---------- 顺序读取测试：使用排序后的 key ----------
-    let mut all_keys: Vec<Vec<u8>> = test_data.iter().map(|(k, _)| k.clone()).collect();
+    let mut all_keys: Vec<Vec<u8>> = test_data.iter().map(|(k, _):&(Vec<u8>,Vec<u8>)| k.clone()).collect();
     all_keys.sort(); // 按字典序排序
     let sequential_keys: Vec<_> = all_keys.into_iter().take(1000).collect();
 
@@ -152,7 +152,7 @@ fn trie_read_benchmark(c: &mut Criterion) {
     // ---------- 随机读取测试 ----------
     use rand::seq::SliceRandom;
     let mut rng = SmallRng::seed_from_u64(12345);
-    let mut all_keys_random: Vec<_> = test_data.iter().map(|(k, _)| k.clone()).collect();
+    let mut all_keys_random: Vec<_> = test_data.iter().map(|(k, _):&(Vec<u8>,Vec<u8>)| k.clone()).collect();
     all_keys_random.shuffle(&mut rng);
     let random_keys: Vec<_> = all_keys_random.into_iter().take(1000).collect();
 
@@ -244,7 +244,7 @@ fn rocksdb_read_benchmark(c: &mut Criterion) {
     println!("RocksDB 构建完成（内存模式），准备进行读测试...");
 
     // ---------- 顺序读取测试：使用排序后的 key ----------
-    let mut all_keys: Vec<Vec<u8>> = test_data.iter().map(|(k, _)| k.clone()).collect();
+    let mut all_keys: Vec<Vec<u8>> = test_data.iter().map(|(k, _):&(Vec<u8>,Vec<u8>)| k.clone()).collect();
     all_keys.sort();
     let sequential_keys: Vec<_> = all_keys.into_iter().take(1000).collect();
 
@@ -260,7 +260,7 @@ fn rocksdb_read_benchmark(c: &mut Criterion) {
     // ---------- 随机读取测试 ----------
     use rand::seq::SliceRandom;
     let mut rng = SmallRng::seed_from_u64(12345);
-    let mut all_keys_random: Vec<_> = test_data.iter().map(|(k, _)| k.clone()).collect();
+    let mut all_keys_random: Vec<_> = test_data.iter().map(|(k, _):&(Vec<u8>,Vec<u8>)| k.clone()).collect();
     all_keys_random.shuffle(&mut rng);
     let random_keys: Vec<_> = all_keys_random.into_iter().take(1000).collect();
 
