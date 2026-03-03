@@ -23,7 +23,7 @@ use std::hash::Hasher;
 use trie_db::{Trie, TrieConfiguration, TrieDBMutBuilder, TrieLayout, TrieMut};
 
 // RocksDB 依赖
-use rocksdb::{DB, Options,BlockBasedOptions,BlockBasedIndexType};
+use rocksdb::{BlockBasedIndexType, BlockBasedOptions, DB, DataBlockIndexType, Options, SliceTransform};
 use tempfile::TempDir;
 
 // 用于共享测试数据的全局变量
@@ -210,7 +210,9 @@ fn rocksdb_write_benchmark(c: &mut Criterion) {
                 let mut opts = Options::default();
                 let mut block_opts = BlockBasedOptions::default();
                 block_opts.disable_cache();  // 关闭 block cache
-                block_opts.set_index_type(BlockBasedIndexType::HashSearch);
+             block_opts.set_data_block_index_type(DataBlockIndexType::BinaryAndHash);
+        block_opts.set_index_type(BlockBasedIndexType::HashSearch);
+        opts.set_prefix_extractor(SliceTransform::create_fixed_prefix(32));
                 opts.set_block_based_table_factory(&block_opts);
                 opts.create_if_missing(true);
              
@@ -236,7 +238,9 @@ fn rocksdb_read_benchmark(c: &mut Criterion) {
         let mut opts = Options::default();
         let mut block_opts = BlockBasedOptions::default();
         block_opts.disable_cache();  // 关闭 block cache
+        block_opts.set_data_block_index_type(DataBlockIndexType::BinaryAndHash);
         block_opts.set_index_type(BlockBasedIndexType::HashSearch);
+        opts.set_prefix_extractor(SliceTransform::create_fixed_prefix(32));
         opts.set_block_based_table_factory(&block_opts);
         opts.create_if_missing(true);
         let db = DB::open(&opts, tmp_dir.path()).expect("打开 RocksDB 失败");
