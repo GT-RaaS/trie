@@ -41,7 +41,13 @@ criterion_group!(
 criterion_main!(benches);
 
 // 固定参数：20000个键值对
-const TOTAL_KEYS: usize = 1500000;
+static TOTAL_KEYS: Lazy<usize> = Lazy::new(|| {
+    env::var("TOTAL_KEYS")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(1500000)
+});
+
 const KEY_SIZE: usize = 32;
 const VALUE_SIZE: usize = 64;
 const SEED: u64 = 42;
@@ -69,11 +75,11 @@ impl TrieConfiguration for Layout {}
 // 生成测试数据：返回 (key, value) 对的列表
 fn generate_test_data() -> Vec<(Vec<u8>, Vec<u8>)> {
 	let mut rng = SmallRng::seed_from_u64(SEED);
-	let mut data = Vec::with_capacity(TOTAL_KEYS);
+	let mut data = Vec::with_capacity(*TOTAL_KEYS);
 
-	println!("生成 {} 个键值对...", TOTAL_KEYS);
+	println!("生成 {} 个键值对...", *TOTAL_KEYS);
 
-	for i in 0..TOTAL_KEYS {
+	for i in 0..*TOTAL_KEYS {
 		// 生成随机 key (32 字节)
 		let mut key = vec![0u8; KEY_SIZE];
 		rng.fill_bytes(&mut key);
@@ -168,7 +174,7 @@ fn trie_read_benchmark(c: &mut Criterion) {
 	});
 
 	// ---------- 热点读取测试 ----------
-	let hotspot_key = &test_data[TOTAL_KEYS / 2].0;
+	let hotspot_key = &test_data[*TOTAL_KEYS / 2].0;
 	c.bench_function("trie_read_hotspot_1000_times", |b| {
 		b.iter(|| {
 			for _ in 0..1000 {
@@ -294,7 +300,7 @@ fn rocksdb_read_benchmark(c: &mut Criterion) {
 	});
 
 	// ---------- 热点读取测试 ----------
-	let hotspot_key = &test_data[TOTAL_KEYS / 2].0;
+	let hotspot_key = &test_data[*TOTAL_KEYS / 2].0;
 	c.bench_function("rocksdb_read_hotspot_1000_times_memory", |b| {
 		b.iter(|| {
 			for _ in 0..1000 {
