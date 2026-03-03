@@ -41,7 +41,7 @@ criterion_group!(
 criterion_main!(benches);
 
 // 固定参数：20000个键值对
-const TOTAL_KEYS: usize = 2000000;
+const TOTAL_KEYS: usize = 1500000;
 const KEY_SIZE: usize = 32;
 const VALUE_SIZE: usize = 64;
 const SEED: u64 = 42;
