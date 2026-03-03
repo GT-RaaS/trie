@@ -26,6 +26,9 @@ use trie_db::{Trie, TrieConfiguration, TrieDBMutBuilder, TrieLayout, TrieMut};
 use rocksdb::{DB, Options};
 use tempfile::TempDir;
 
+// 用于共享测试数据的全局变量
+use once_cell::sync::Lazy;
+
 criterion_group!(
     benches,
     trie_write_benchmark,
@@ -36,10 +39,13 @@ criterion_group!(
 criterion_main!(benches);
 
 // 固定参数：20000个键值对
-const TOTAL_KEYS: usize = 20000;
+const TOTAL_KEYS: usize = 2000000;
 const KEY_SIZE: usize = 32;
 const VALUE_SIZE: usize = 64;
 const SEED: u64 = 42;
+
+// 内存文件系统路径：Linux 下为 /dev/shm，macOS 用户请改为 /tmp
+const MEM_FS_PATH: &str = "/dev/shm";
 
 mod blake2b_hasher;
 use blake2b_hasher::Blake2bHasher;
@@ -85,10 +91,15 @@ fn generate_test_data() -> Vec<(Vec<u8>, Vec<u8>)> {
     data
 }
 
+// 全局共享的测试数据，仅生成一次
+static TEST_DATA: Lazy<Vec<(Vec<u8>, Vec<u8>)>> = Lazy::new(|| {
+    generate_test_data()
+});
+
 // ==================== Trie 基准测试 ====================
 
 fn trie_write_benchmark(c: &mut Criterion) {
-    let test_data = generate_test_data();
+    let test_data = &TEST_DATA;
 
     c.bench_function("trie_write_20000_keys", |b| {
         b.iter(|| {
@@ -97,7 +108,7 @@ fn trie_write_benchmark(c: &mut Criterion) {
                 let mut mdb = MemoryDB::<Blake2bHasher, HashKey<_>, _>::default();
                 let mut trie = TrieDBMutBuilder::<Layout>::new(&mut mdb, &mut root).build();
 
-                for (key, value) in &test_data {
+                for (key, value) in test_data.iter() {
                     trie.insert(key, value).expect("插入失败");
                 }
             }
@@ -107,14 +118,14 @@ fn trie_write_benchmark(c: &mut Criterion) {
 }
 
 fn trie_read_benchmark(c: &mut Criterion) {
-    let test_data = generate_test_data();
+    let test_data = &TEST_DATA;
 
     // 先创建包含数据的 trie
     let mut root = Default::default();
     let mut mdb = MemoryDB::<Blake2bHasher, HashKey<_>, _>::default();
     {
         let mut trie = TrieDBMutBuilder::<Layout>::new(&mut mdb, &mut root).build();
-        for (key, value) in &test_data {
+        for (key, value) in test_data.iter() {
             trie.insert(key, value).expect("插入失败");
         }
     }
@@ -184,25 +195,23 @@ fn trie_read_benchmark(c: &mut Criterion) {
     });
 }
 
-// ==================== RocksDB 基准测试 ====================
+// ==================== RocksDB 基准测试（内存模式） ====================
 
 fn rocksdb_write_benchmark(c: &mut Criterion) {
-    let test_data = generate_test_data();
+    let test_data = &TEST_DATA;
 
-    c.bench_function("rocksdb_write_20000_keys", |b| {
+    c.bench_function("rocksdb_write_20000_keys_memory", |b| {
         b.iter_batched(
             || {
-                // 每次迭代创建新的临时目录
-                TempDir::new_in("/dev/shm").expect("创建临时目录失败")
+                // 在内存文件系统中创建临时目录
+                TempDir::new_in(MEM_FS_PATH).expect(&format!("在 {} 创建临时目录失败", MEM_FS_PATH))
             },
             |tmp_dir| {
-                // 打开 RocksDB
                 let mut opts = Options::default();
                 opts.create_if_missing(true);
                 let db = DB::open(&opts, tmp_dir.path()).expect("打开 RocksDB 失败");
 
-                // 批量写入
-                for (key, value) in &test_data {
+                for (key, value) in test_data.iter() {
                     db.put(key, value).expect("写入失败");
                 }
 
@@ -214,32 +223,32 @@ fn rocksdb_write_benchmark(c: &mut Criterion) {
 }
 
 fn rocksdb_read_benchmark(c: &mut Criterion) {
-    let test_data = generate_test_data();
+    let test_data = &TEST_DATA;
 
-    // 预先创建并填充 RocksDB
-    let tmp_dir = TempDir::new().expect("创建临时目录失败");
+    // 在内存文件系统中预先创建并填充 RocksDB
+    let tmp_dir = TempDir::new_in(MEM_FS_PATH).expect(&format!("在 {} 创建临时目录失败", MEM_FS_PATH));
     {
         let mut opts = Options::default();
         opts.create_if_missing(true);
         let db = DB::open(&opts, tmp_dir.path()).expect("打开 RocksDB 失败");
-        for (key, value) in &test_data {
+        for (key, value) in test_data.iter() {
             db.put(key, value).expect("写入失败");
         }
-        db.flush().ok(); // 确保数据持久化
+        db.flush().ok(); // 确保数据持久化（内存中）
     }
 
     // 打开只读数据库
     let opts = Options::default();
     let db = DB::open(&opts, tmp_dir.path()).expect("重新打开 RocksDB 失败");
 
-    println!("RocksDB 构建完成，准备进行读测试...");
+    println!("RocksDB 构建完成（内存模式），准备进行读测试...");
 
     // ---------- 顺序读取测试：使用排序后的 key ----------
     let mut all_keys: Vec<Vec<u8>> = test_data.iter().map(|(k, _)| k.clone()).collect();
     all_keys.sort();
     let sequential_keys: Vec<_> = all_keys.into_iter().take(1000).collect();
 
-    c.bench_function("rocksdb_read_sorted_sequential_1000_keys", |b| {
+    c.bench_function("rocksdb_read_sorted_sequential_1000_keys_memory", |b| {
         b.iter(|| {
             for key in &sequential_keys {
                 let result = db.get(key).expect("读取失败");
@@ -255,7 +264,7 @@ fn rocksdb_read_benchmark(c: &mut Criterion) {
     all_keys_random.shuffle(&mut rng);
     let random_keys: Vec<_> = all_keys_random.into_iter().take(1000).collect();
 
-    c.bench_function("rocksdb_read_random_1000_keys", |b| {
+    c.bench_function("rocksdb_read_random_1000_keys_memory", |b| {
         b.iter(|| {
             for key in &random_keys {
                 let result = db.get(key).expect("读取失败");
@@ -266,7 +275,7 @@ fn rocksdb_read_benchmark(c: &mut Criterion) {
 
     // ---------- 热点读取测试 ----------
     let hotspot_key = &test_data[TOTAL_KEYS / 2].0;
-    c.bench_function("rocksdb_read_hotspot_1000_times", |b| {
+    c.bench_function("rocksdb_read_hotspot_1000_times_memory", |b| {
         b.iter(|| {
             for _ in 0..1000 {
                 let result = db.get(hotspot_key).expect("读取失败");
@@ -284,7 +293,7 @@ fn rocksdb_read_benchmark(c: &mut Criterion) {
         nonexistent_keys.push(key);
     }
 
-    c.bench_function("rocksdb_read_nonexistent_1000_keys", |b| {
+    c.bench_function("rocksdb_read_nonexistent_1000_keys_memory", |b| {
         b.iter(|| {
             for key in &nonexistent_keys {
                 let result = db.get(key).expect("读取失败");
